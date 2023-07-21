@@ -165,10 +165,10 @@ class Agent:
         ]
         return random.choice(actions)
 
-    def _select_action(self, state):
+    def _select_action(self, state, explore=True):
         r = self._random_action()
 
-        if random.random() < self.epsilon:
+        if random.random() < self.epsilon and explore:
             logging.debug(f"Selecting random action")
             return r
         else:
@@ -176,12 +176,12 @@ class Agent:
             best_action = self.q.best_action(state)
             return best_action if best_action is not None else r
 
-    def _update(self, environment):
+    def _update(self, environment, explore=True):
         S = self.state
         A = self.action
 
         S_prime, R = environment.take_action(S, A)
-        A_prime = self._select_action(S_prime)
+        A_prime = self._select_action(S_prime, explore)
         logging.debug(
             f"Taking action '{A.__name__}' from {S} to {S_prime} with reward {R}"
         )
@@ -197,13 +197,13 @@ class Agent:
         self.action = A_prime
         logging.debug(f"New state is {self.state} and action is {self.action.__name__}")
 
-    def run(self, environment, goal, episodes, steps):
+    def run(self, environment, goal, episodes, steps, explore=True):
         for episode in range(episodes):
             logging.debug(f"Running episode {episode}")
             self.state = start
 
             for step in range(steps):
-                self._update(environment)
+                self._update(environment, explore)
                 if self.state == goal:
                     logging.info(f"Episode {episode}: Goal reached in {step} steps")
                     break
@@ -258,3 +258,6 @@ if __name__ == "__main__":
     agent.run(environment, goal, episodes, steps)
     agent.plot(figure)
     # print(agent)
+
+    print()
+    agent.run(environment, goal, 1, steps, explore=False)
