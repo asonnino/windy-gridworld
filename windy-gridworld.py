@@ -48,6 +48,30 @@ class Action:
         return State(min(State.MAX_X, state.x + 1), state.y)
 
 
+class DiagonalAction(Action):
+    @staticmethod
+    def up_left(state):
+        return State(max(0, state.x - 1), min(State.MAX_Y, state.y + 1))
+
+    @staticmethod
+    def up_right(state):
+        return State(min(State.MAX_X, state.x + 1), min(State.MAX_Y, state.y + 1))
+
+    @staticmethod
+    def down_left(state):
+        return State(max(0, state.x - 1), max(0, state.y - 1))
+
+    @staticmethod
+    def down_right(state):
+        return State(min(State.MAX_X, state.x + 1), max(0, state.y - 1))
+
+
+class DiagonalOrStayAction(DiagonalAction):
+    @staticmethod
+    def stay(state):
+        return state
+
+
 class Rewards:
     def __init__(self, goal):
         self.goal = goal
@@ -192,9 +216,10 @@ class Agent:
         if figure is None:
             figure = plt.figure(figsize=(10, 10))
 
-        plt.plot(*zip(*self.stats))
+        plt.plot(*zip(*self.stats), label=self.action_class.__name__)
         plt.xlabel("Episode")
         plt.ylabel("Steps")
+        plt.legend()
         plt.savefig("windy-gridworld.png")
 
     def __str__(self):
@@ -218,8 +243,18 @@ if __name__ == "__main__":
 
     episodes, steps = 200, 5_000
     epsilon, alpha, gamma = 0.1, 0.5, 0.1
+
+    figure = plt.figure(figsize=(10, 10))
+
     agent = Agent(epsilon, alpha, gamma, start, Action)
     agent.run(environment, goal, episodes, steps)
-
-    print(agent)
-    agent.plot()
+    agent.plot(figure)
+    # print(agent)
+    agent = Agent(epsilon, alpha, gamma, start, DiagonalAction)
+    agent.run(environment, goal, episodes, steps)
+    agent.plot(figure)
+    # print(agent)
+    agent = Agent(epsilon, alpha, gamma, start, DiagonalOrStayAction)
+    agent.run(environment, goal, episodes, steps)
+    agent.plot(figure)
+    # print(agent)
