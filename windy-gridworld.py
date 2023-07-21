@@ -1,5 +1,6 @@
 from collections import defaultdict
 from functools import total_ordering
+import matplotlib.pyplot as plt
 import random
 import logging
 
@@ -61,7 +62,7 @@ class Rewards:
 class Environment:
     def __init__(self, rewards):
         self.rewards = rewards
-        self.winds = defaultdict(lambda: (Action.up, 0))
+        self.winds = defaultdict(lambda: (None, 0))
 
         logging.info(f"Environment created with goal={rewards.goal}")
 
@@ -110,7 +111,7 @@ class Q:
 
 
 class Agent:
-    def __init__(self, epsilon, alpha, gamma, start):
+    def __init__(self, epsilon, alpha, gamma, start, action_class):
         for x in [epsilon, alpha, gamma]:
             assert x < 1.0 and x > 0.0
 
@@ -118,9 +119,12 @@ class Agent:
         self.alpha = alpha
         self.gamma = gamma
 
+        self.action_class = action_class
         self.q = Q(0)
         self.state = start
         self.action = self._select_action(self.state)
+
+        self.stats = []
 
         logging.info(
             f"Creating agent with state {start} and action {self.action.__name__}"
@@ -128,9 +132,13 @@ class Agent:
 
     def _random_action(self):
         def filter(x):
-            return callable(getattr(Action, x)) and x.startswith("__") is False
+            return (
+                callable(getattr(self.action_class, x)) and x.startswith("__") is False
+            )
 
-        actions = [getattr(Action, x) for x in dir(Action) if filter(x)]
+        actions = [
+            getattr(self.action_class, x) for x in dir(self.action_class) if filter(x)
+        ]
         return random.choice(actions)
 
     def _select_action(self, state):
@@ -144,7 +152,7 @@ class Agent:
             best_action = self.q.best_action(state)
             return best_action if best_action is not None else r
 
-    def run(self, environment):
+    def _update(self, environment):
         S = self.state
         A = self.action
 
@@ -157,13 +165,37 @@ class Agent:
         Q = self.q.get(S, A)
         Q_prime = self.q.get(S_prime, A_prime)
 
-        delta = R + self.gamma * Q_prime - Q
-        self.q.set(S, A, Q + self.alpha * delta)
-        logging.debug(f"Updating Q({S}, {A.__name__}) = {Q + self.alpha * delta}")
+        update = Q + self.alpha * (R + self.gamma * Q_prime - Q)
+        self.q.set(S, A, update)
+        logging.debug(f"Updating Q({S}, {A.__name__}) = {update}")
 
         self.state = S_prime
         self.action = A_prime
         logging.debug(f"New state is {self.state} and action is {self.action.__name__}")
+
+    def run(self, environment, goal, episodes, steps):
+        for episode in range(episodes):
+            logging.debug(f"Running episode {episode}")
+            self.state = start
+
+            for step in range(steps):
+                self._update(environment)
+                if self.state == goal:
+                    logging.info(f"Episode {episode}: Goal reached in {step} steps")
+                    break
+
+            self.stats += [(episode, step)]
+            if self.state != goal:
+                logging.warning(f"Episode {episode}: Goal not reached in {steps} steps")
+
+    def plot(self, figure=None):
+        if figure is None:
+            figure = plt.figure(figsize=(10, 10))
+
+        plt.plot(*zip(*self.stats))
+        plt.xlabel("Episode")
+        plt.ylabel("Steps")
+        plt.savefig("windy-gridworld.png")
 
     def __str__(self):
         return f"\n\nAgent State: {self.state}\n\n{self.q.__str__()}\n"
@@ -186,20 +218,8 @@ if __name__ == "__main__":
 
     episodes, steps = 200, 5_000
     epsilon, alpha, gamma = 0.1, 0.5, 0.1
-    agent = Agent(epsilon, alpha, gamma, start)
+    agent = Agent(epsilon, alpha, gamma, start, Action)
+    agent.run(environment, goal, episodes, steps)
 
-    for episode in range(episodes):
-        logging.debug(f"Running episode {episode}")
-        agent.state = start
-
-        for step in range(steps):
-            agent.run(environment)
-            if agent.state == goal:
-                logging.info(f"Episode {episode}: Goal reached in {step} steps")
-                break
-
-    if agent.state != goal:
-        print(f"\nGoal not reached (state={agent.state}, goal={goal})")
-    else:
-        print(f"\nGoal reached!")
     print(agent)
+    agent.plot()
