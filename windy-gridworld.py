@@ -148,6 +148,7 @@ class Agent:
         self.state = start
         self.action = self._select_action(self.state)
 
+        self.path = []
         self.stats = []
 
         logging.info(
@@ -195,12 +196,14 @@ class Agent:
 
         self.state = S_prime
         self.action = A_prime
+        self.path += [f"({S}, {A.__name__})"]
         logging.debug(f"New state is {self.state} and action is {self.action.__name__}")
 
     def run(self, environment, goal, episodes, steps, explore=True):
         for episode in range(episodes):
             logging.debug(f"Running episode {episode}")
             self.state = start
+            self.path = []
 
             for step in range(steps):
                 self._update(environment, explore)
@@ -223,7 +226,10 @@ class Agent:
         plt.savefig("windy-gridworld.png")
 
     def __str__(self):
-        return f"\n\nAgent State: {self.state}\n\n{self.q.__str__()}\n"
+        return f"\n\nFinal State: {self.state}\n\n{self.path}\n"
+
+    def __repr__(self):
+        return f"\n\nFinal State: {self.state}\n\n{self.q}\n"
 
 
 if __name__ == "__main__":
@@ -261,3 +267,4 @@ if __name__ == "__main__":
 
     print()
     agent.run(environment, goal, 1, steps, explore=False)
+    print(agent)
