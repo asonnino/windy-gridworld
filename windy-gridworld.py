@@ -142,18 +142,22 @@ class Agent:
         self.epsilon = epsilon
         self.alpha = alpha
         self.gamma = gamma
+        self.start = start
 
         self.action_class = action_class
         self.q = Q(0)
-        self.state = start
-        self.action = self._select_action(self.state)
-
-        self.path = []
         self.stats = []
+
+        self._restart_episode()
 
         logging.info(
             f"Creating agent with state {start} and action {self.action.__name__}"
         )
+
+    def _restart_episode(self):
+        self.state = self.start
+        self.action = self._select_action(self.state)
+        self.trajectory = [(self.state, self.action.__name__)]
 
     def _random_action(self):
         def filter(x):
@@ -166,10 +170,10 @@ class Agent:
         ]
         return random.choice(actions)
 
-    def _select_action(self, state, explore=True):
+    def _select_action(self, state):
         r = self._random_action()
 
-        if random.random() < self.epsilon and explore:
+        if random.random() < self.epsilon:
             logging.debug(f"Selecting random action")
             return r
         else:
@@ -177,12 +181,12 @@ class Agent:
             best_action = self.q.best_action(state)
             return best_action if best_action is not None else r
 
-    def _update(self, environment, explore=True):
+    def _update(self, environment):
         S = self.state
         A = self.action
 
         S_prime, R = environment.take_action(S, A)
-        A_prime = self._select_action(S_prime, explore)
+        A_prime = self._select_action(S_prime)
         logging.debug(
             f"Taking action '{A.__name__}' from {S} to {S_prime} with reward {R}"
         )
@@ -196,37 +200,66 @@ class Agent:
 
         self.state = S_prime
         self.action = A_prime
-        self.path += [f"({S}, {A.__name__})"]
+        self.trajectory += [(self.state, self.action.__name__)]
         logging.debug(f"New state is {self.state} and action is {self.action.__name__}")
 
-    def run(self, environment, goal, episodes, steps, explore=True):
+    def run(self, environment, goal, episodes, steps, epsilon=None):
+        if epsilon is not None:
+            self.epsilon = epsilon
+
         for episode in range(episodes):
             logging.debug(f"Running episode {episode}")
-            self.state = start
-            self.path = []
+            self._restart_episode()
 
             for step in range(steps):
-                self._update(environment, explore)
+                self._update(environment)
                 if self.state == goal:
-                    logging.info(f"Episode {episode}: Goal reached in {step} steps")
+                    if episode % 100 == 0:
+                        logging.info(f"Episode {episode}: Goal reached in {step} steps")
                     break
 
             self.stats += [(episode, step)]
             if self.state != goal:
                 logging.warning(f"Episode {episode}: Goal not reached in {steps} steps")
 
-    def plot(self, figure=None):
+    def plot(self, environment, figure=None, start=None, goal=None):
         if figure is None:
             figure = plt.figure(figsize=(10, 10))
 
+        # Plot training stats
+        plt.subplot(2, 1, 1)
         plt.plot(*zip(*self.stats), label=self.action_class.__name__)
         plt.xlabel("Episode")
         plt.ylabel("Steps")
         plt.legend()
+
+        # Plot trajectory
+        plt.subplot(2, 1, 2)
+        values = [(state.x, state.y) for state, _ in self.trajectory]
+        plt.plot(
+            *zip(*values),
+            ".-",
+            label=self.action_class.__name__,
+        )
+        if start is not None:
+            plt.plot(self.start.x, self.start.y, "o", label="Start")
+        if goal is not None:
+            plt.plot(goal.x, goal.y, "o", label="Goal")
+        plt.xlabel("X")
+        plt.ylabel("Y")
+        plt.grid(True)
+        plt.legend()
+
+        for state, (_, strength) in environment.winds.items():
+            if strength > 0:
+                plt.scatter(state.x, state.y, s=strength * 100, c="r", alpha=0.5)
+
+        # Save figure
         plt.savefig("windy-gridworld.png")
 
     def __str__(self):
-        return f"\n\nFinal State: {self.state}\n\n{self.path}\n"
+        trajectory = [f"({S}, {A})" for S, A in self.trajectory]
+        return f"\n\nFinal State: {self.state}\n\n{trajectory}\n"
 
     def __repr__(self):
         return f"\n\nFinal State: {self.state}\n\n{self.q}\n"
@@ -247,24 +280,25 @@ if __name__ == "__main__":
     [environment.register_wind(State(7, y), Action.up, 2) for y in range(7)]
     [environment.register_wind(State(8, y), Action.up, 1) for y in range(7)]
 
-    episodes, steps = 200, 5_000
+    episodes, steps = 5_000, 5_000
     epsilon, alpha, gamma = 0.1, 0.5, 0.1
 
     figure = plt.figure(figsize=(10, 10))
 
     agent = Agent(epsilon, alpha, gamma, start, Action)
     agent.run(environment, goal, episodes, steps)
-    agent.plot(figure)
-    # print(agent)
-    agent = Agent(epsilon, alpha, gamma, start, DiagonalAction)
-    agent.run(environment, goal, episodes, steps)
-    agent.plot(figure)
-    # print(agent)
-    agent = Agent(epsilon, alpha, gamma, start, DiagonalOrStayAction)
-    agent.run(environment, goal, episodes, steps)
-    agent.plot(figure)
+    agent.run(environment, goal, 1, steps, epsilon=0.01)
+    agent.plot(environment, figure, start, goal)
+    print(agent)
+
+    # agent = Agent(epsilon, alpha, gamma, start, DiagonalAction)
+    # agent.run(environment, goal, episodes, steps)
+    # agent.run(environment, goal, 1, steps, epsilon=0.00)
+    # agent.plot(environment, figure)
     # print(agent)
 
-    print()
-    agent.run(environment, goal, 1, steps, explore=False)
-    print(agent)
+    # agent = Agent(epsilon, alpha, gamma, start, DiagonalOrStayAction)
+    # agent.run(environment, goal, episodes, steps)
+    # agent.run(environment, goal, 1, steps, epsilon=0.00)
+    # agent.plot(environment, figure)
+    # print(agent)
