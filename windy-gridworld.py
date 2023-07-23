@@ -203,9 +203,11 @@ class Agent:
         self.trajectory += [(self.state, self.action.__name__)]
         logging.debug(f"New state is {self.state} and action is {self.action.__name__}")
 
-    def run(self, environment, goal, episodes, steps, epsilon=None):
+    def run(self, environment, goal, episodes, steps, epsilon=None, start=None):
         if epsilon is not None:
             self.epsilon = epsilon
+        if start is not None:
+            self.start = start
 
         for episode in range(episodes):
             logging.debug(f"Running episode {episode}")
@@ -285,20 +287,29 @@ if __name__ == "__main__":
 
     figure = plt.figure(figsize=(10, 10))
 
+    # 4 actions
     agent = Agent(epsilon, alpha, gamma, start, Action)
     agent.run(environment, goal, episodes, steps)
-    agent.run(environment, goal, 1, steps, epsilon=0.01)
+
+    [environment.register_wind(State(7, y), Action.down, 3) for y in range(7)]
+    agent.run(environment, goal, 1, steps, epsilon=0.01, start=State(0, 0))
     agent.plot(environment, figure, start, goal)
     print(agent)
 
+    # 8 actions
     agent = Agent(epsilon, alpha, gamma, start, DiagonalAction)
     agent.run(environment, goal, episodes, steps)
-    agent.run(environment, goal, 1, steps, epsilon=0.00)
+
+    [environment.register_wind(State(7, y), Action.down, 3) for y in range(7)]
+    agent.run(environment, goal, 1, steps, epsilon=0.01, start=State(4, 0))
     agent.plot(environment, figure)
     print(agent)
 
+    # 9 actions
     agent = Agent(epsilon, alpha, gamma, start, DiagonalOrStayAction)
     agent.run(environment, goal, episodes, steps)
-    agent.run(environment, goal, 1, steps, epsilon=0.00)
+
+    [environment.register_wind(State(7, y), Action.down, 3) for y in range(7)]
+    agent.run(environment, goal, 1, steps, epsilon=0.01, start=State(9, 0))
     agent.plot(environment, figure)
     print(agent)
