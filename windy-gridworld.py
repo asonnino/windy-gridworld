@@ -235,16 +235,16 @@ class Agent:
 
         # Plot trajectory
         plt.subplot(2, 1, 2)
+        if start is not None:
+            plt.plot(self.start.x, self.start.y, "o", label="Start")
+        if goal is not None:
+            plt.plot(goal.x, goal.y, "o", label="Goal")
         values = [(state.x, state.y) for state, _ in self.trajectory]
         plt.plot(
             *zip(*values),
             ".-",
             label=self.action_class.__name__,
         )
-        if start is not None:
-            plt.plot(self.start.x, self.start.y, "o", label="Start")
-        if goal is not None:
-            plt.plot(goal.x, goal.y, "o", label="Goal")
         plt.xlabel("X")
         plt.ylabel("Y")
         plt.grid(True)
