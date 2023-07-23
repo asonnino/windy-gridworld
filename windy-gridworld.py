@@ -289,7 +289,7 @@ if __name__ == "__main__":
     [environment.register_wind(State(8, y), Action.up, 1) for y in range(7)]
 
     episodes, steps = 8_000, 5_000
-    epsilon, alpha, gamma = 0.1, 0.5, 0.1
+    epsilon, alpha, gamma = 0.1, 0.5, 0.9
 
     figure = plt.figure(figsize=(10, 10))
 
