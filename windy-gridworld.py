@@ -216,7 +216,7 @@ class Agent:
             for step in range(steps):
                 self._update(environment)
                 if self.state == goal:
-                    if episode % 100 == 0:
+                    if episode % 1000 == 0:
                         logging.info(f"Episode {episode}: Goal reached in {step} steps")
                     break
 
