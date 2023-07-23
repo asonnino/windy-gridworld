@@ -84,8 +84,9 @@ class Rewards:
 
 
 class Environment:
-    def __init__(self, rewards):
+    def __init__(self, rewards, stochastic=False):
         self.rewards = rewards
+        self.stochastic = stochastic
         self.winds = defaultdict(lambda: (None, 0))
 
         logging.info(f"Environment created with goal={rewards.goal}")
@@ -93,8 +94,13 @@ class Environment:
     def register_wind(self, state, action, strength):
         self.winds[state] = (action, strength)
 
+    def set_stochastic(self, stochastic):
+        self.stochastic = stochastic
+
     def apply_wind(self, state):
         action, strength = self.winds[state]
+        if self.stochastic and strength > 0:
+            strength += random.randrange(-1, 1)
         for _ in range(strength):
             state = action(state)
         return state
@@ -274,7 +280,7 @@ if __name__ == "__main__":
     goal = State(7, 3)
 
     rewards = Rewards(goal)
-    environment = Environment(rewards)
+    environment = Environment(rewards, stochastic=True)
     [environment.register_wind(State(3, y), Action.up, 1) for y in range(7)]
     [environment.register_wind(State(4, y), Action.up, 1) for y in range(7)]
     [environment.register_wind(State(5, y), Action.up, 1) for y in range(7)]
@@ -282,7 +288,7 @@ if __name__ == "__main__":
     [environment.register_wind(State(7, y), Action.up, 2) for y in range(7)]
     [environment.register_wind(State(8, y), Action.up, 1) for y in range(7)]
 
-    episodes, steps = 5_000, 5_000
+    episodes, steps = 8_000, 5_000
     epsilon, alpha, gamma = 0.1, 0.5, 0.1
 
     figure = plt.figure(figsize=(10, 10))
